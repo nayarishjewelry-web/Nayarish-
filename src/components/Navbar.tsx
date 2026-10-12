@@ -45,12 +45,24 @@ export const Navbar: React.FC<NavbarProps> = ({
 
     // Secret Admin Gate Trigger: ONLY triggered by typing "admin"
     if (cleanQuery.toLowerCase() === 'admin') {
-      showToast({
-        type: 'luxury',
-        title: 'Maison Nayarish Vault Unlocked',
-        message: 'Privileged administrative console accessed.',
-      });
-      setCurrentPage('admin');
+      const isAuthorizedAdmin = userEmail?.toLowerCase().trim() === 'nayarishjewelry@gmail.com';
+      if (isAuthorizedAdmin) {
+        showToast({
+          type: 'luxury',
+          title: 'Administrative Console Access Granted',
+          message: 'Welcome, Administrator (nayarishjewelry@gmail.com).',
+        });
+        setCurrentPage('admin');
+      } else {
+        showToast({
+          type: 'error',
+          title: 'Administrative Access Denied',
+          message: 'Administrative privileges are restricted exclusively to nayarishjewelry@gmail.com.',
+        });
+        if (!userEmail) {
+          setCurrentPage('auth');
+        }
+      }
       setSearchQuery('');
       setIsSearchOpen(false);
       setIsMobileMenuOpen(false);
@@ -213,13 +225,13 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Search className="w-4 h-4" />
             </button>
 
-            {/* VIP Profile */}
+            {/* Profile / Account */}
             <button
               onClick={() => setCurrentPage('auth')}
               className={`p-2 rounded-full border border-purple-900/40 text-slate-300 hover:text-[#D4AF37] hover:border-[#D4AF37]/50 transition-colors cursor-pointer relative ${
                 currentPage === 'auth' ? 'border-[#D4AF37] text-[#D4AF37]' : ''
               }`}
-              title={userEmail ? `VIP Account: ${userEmail}` : 'Sign In / Account'}
+              title={userEmail ? `Account: ${userEmail}` : 'Sign In / Account'}
               aria-label="Account"
             >
               <User className="w-4 h-4" />

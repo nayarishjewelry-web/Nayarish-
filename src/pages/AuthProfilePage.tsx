@@ -64,7 +64,7 @@ export const AuthProfilePage: React.FC<AuthProfilePageProps> = ({
       setCurrentUser(user);
       showToast({
         type: 'luxury',
-        title: 'Welcome Back, Esteemed Patron',
+        title: 'Welcome Back',
         message: `Signed in as ${user.displayName || user.email}`,
       });
     } catch (err: any) {
@@ -82,7 +82,7 @@ export const AuthProfilePage: React.FC<AuthProfilePageProps> = ({
       showToast({
         type: 'error',
         title: 'Registration Incomplete',
-        message: 'Please enter a valid email and luxury vault passphrase.',
+        message: 'Please enter a valid email and password.',
       });
       return;
     }
@@ -92,8 +92,8 @@ export const AuthProfilePage: React.FC<AuthProfilePageProps> = ({
       setCurrentUser(user);
       showToast({
         type: 'luxury',
-        title: 'VIP Collector Registry Created',
-        message: 'Your personal Nayarish Vault account is active.',
+        title: 'Account Created',
+        message: 'Your Nayarish account is active.',
       });
     } catch (err: any) {
       showToast({
@@ -104,23 +104,13 @@ export const AuthProfilePage: React.FC<AuthProfilePageProps> = ({
     }
   };
 
-  const handleDemoSignIn = async () => {
-    const user = await NayarishStore.signInWithEmail('nayarishjewelry@gmail.com', 'nayarish2026');
-    setCurrentUser(user);
-    showToast({
-      type: 'luxury',
-      title: 'VIP Demo Patron Authenticated',
-      message: 'Signed in as Ananya Singhania (nayarishjewelry@gmail.com)',
-    });
-  };
-
   const handleSignOut = async () => {
     await NayarishStore.signOut();
     setCurrentUser(null);
     showToast({
       type: 'info',
-      title: 'Session Disconnected',
-      message: 'You have securely signed out of your Nayarish Vault.',
+      title: 'Signed Out',
+      message: 'You have securely signed out of your account.',
     });
   };
 
@@ -134,12 +124,40 @@ export const AuthProfilePage: React.FC<AuthProfilePageProps> = ({
       showToast({
         type: 'success',
         title: 'Coordinates Updated',
-        message: 'Saved delivery destination updated in vault registry.',
+        message: 'Saved delivery destination updated.',
       });
     }
   };
 
-  // If user is NOT logged in: Show Auth Forms
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    try {
+      const user = await NayarishStore.signInWithGoogle();
+      setCurrentUser(user);
+      const isAdmin = user.email.toLowerCase().trim() === 'nayarishjewelry@gmail.com';
+      showToast({
+        type: 'luxury',
+        title: isAdmin ? 'Administrator Signed In' : 'Welcome',
+        message: isAdmin 
+          ? 'Authenticated with administrator privileges (nayarishjewelry@gmail.com).' 
+          : `Signed in as ${user.displayName || user.email}`,
+      });
+    } catch (err: any) {
+      if (err?.code !== 'auth/popup-closed-by-user') {
+        showToast({
+          type: 'error',
+          title: 'Google Sign-In Failed',
+          message: err?.message || 'Unable to authenticate with Google.',
+        });
+      }
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
+  // If user is NOT logged in: Show Standard Auth Forms
   if (!currentUser) {
     return (
       <div className="min-h-screen bg-[#0F172A] py-16 px-6 flex items-center justify-center">
@@ -150,19 +168,22 @@ export const AuthProfilePage: React.FC<AuthProfilePageProps> = ({
               <Lock className="w-5 h-5" />
             </div>
             <span className="text-[10px] uppercase tracking-[0.25em] text-[#D4AF37] font-semibold">
-              Maison Nayarish Vault
+              Maison Nayarish
             </span>
             <h1 className="text-2xl font-display font-medium text-slate-100 mt-1">
-              Collector Portal
+              {authMode === 'signin' ? 'Sign In' : 'Create Account'}
             </h1>
             <p className="text-xs text-slate-400 mt-1">
-              Access your bespoke acquisitions, armored order tracking, and private salon reservations.
+              {authMode === 'signin' 
+                ? 'Sign in to access your orders, saved addresses, and profile.' 
+                : 'Create an account to track orders and save your delivery details.'}
             </p>
           </div>
 
-          {/* Mode Switch Tabs */}
+          {/* Standard Mode Switch Tabs: Sign In / Sign Up */}
           <div className="flex border-b border-slate-800 mb-6">
             <button
+              type="button"
               onClick={() => setAuthMode('signin')}
               className={`flex-1 pb-3 text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer text-center ${
                 authMode === 'signin'
@@ -170,9 +191,10 @@ export const AuthProfilePage: React.FC<AuthProfilePageProps> = ({
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              VIP Sign In
+              Sign In
             </button>
             <button
+              type="button"
               onClick={() => setAuthMode('signup')}
               className={`flex-1 pb-3 text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer text-center ${
                 authMode === 'signup'
@@ -180,7 +202,7 @@ export const AuthProfilePage: React.FC<AuthProfilePageProps> = ({
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              New Registry
+              Sign Up
             </button>
           </div>
 
@@ -188,7 +210,7 @@ export const AuthProfilePage: React.FC<AuthProfilePageProps> = ({
             {authMode === 'signup' && (
               <div>
                 <label className="block text-xs uppercase tracking-wider text-slate-400 mb-1.5 font-medium">
-                  Full Name / Title
+                  Full Name
                 </label>
                 <div className="relative">
                   <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
@@ -197,7 +219,7 @@ export const AuthProfilePage: React.FC<AuthProfilePageProps> = ({
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. Lady Vivienne Montgomery"
+                    placeholder="Enter your full name"
                     className="w-full bg-slate-900/80 border border-slate-700 rounded-lg pl-10 pr-4 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-[#D4AF37]"
                   />
                 </div>
@@ -215,7 +237,7 @@ export const AuthProfilePage: React.FC<AuthProfilePageProps> = ({
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="patron@domain.com"
+                  placeholder="name@domain.com"
                   className="w-full bg-slate-900/80 border border-slate-700 rounded-lg pl-10 pr-4 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-[#D4AF37]"
                 />
               </div>
@@ -223,7 +245,7 @@ export const AuthProfilePage: React.FC<AuthProfilePageProps> = ({
 
             <div>
               <label className="block text-xs uppercase tracking-wider text-slate-400 mb-1.5 font-medium">
-                Vault Passphrase
+                Password
               </label>
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
@@ -242,22 +264,49 @@ export const AuthProfilePage: React.FC<AuthProfilePageProps> = ({
               type="submit"
               className="w-full mt-2 py-3 rounded-xl bg-gradient-to-r from-[#D4AF37] to-[#F59E0B] text-slate-950 text-xs font-bold uppercase tracking-[0.2em] hover:brightness-110 transition-all gold-glow cursor-pointer"
             >
-              {authMode === 'signin' ? 'Authenticate With Vault' : 'Register VIP Patron'}
+              {authMode === 'signin' ? 'Sign In' : 'Sign Up'}
             </button>
           </form>
 
-          {/* Quick Demo Login Button */}
-          <div className="mt-6 pt-6 border-t border-slate-800 text-center">
-            <p className="text-[11px] text-slate-400 mb-3">Testing & Evaluation Access:</p>
-            <button
-              type="button"
-              onClick={handleDemoSignIn}
-              className="w-full py-2.5 px-4 rounded-lg bg-[#3B0764]/70 hover:bg-[#2E1065] text-[#D4AF37] border border-[#D4AF37]/40 text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer flex items-center justify-center gap-2"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>One-Click Demo VIP Sign In</span>
-            </button>
+          {/* Social Auth Divider */}
+          <div className="relative my-5">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-800" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-[#141E33] px-3 text-[10px] tracking-widest text-slate-400">
+                Or Continue With
+              </span>
+            </div>
           </div>
+
+          {/* Google Sign In Button */}
+          <button
+            type="button"
+            onClick={handleGoogleSignIn}
+            disabled={isGoogleLoading}
+            className="w-full py-2.5 px-4 rounded-xl bg-slate-900/90 hover:bg-slate-800/90 text-slate-200 border border-slate-700/80 hover:border-[#D4AF37]/60 text-xs font-semibold tracking-wider transition-all duration-200 cursor-pointer flex items-center justify-center gap-3 shadow-md disabled:opacity-50"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24">
+              <path
+                fill="#4285F4"
+                d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
+              />
+              <path
+                fill="#34A853"
+                d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
+              />
+              <path
+                fill="#EA4335"
+                d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+              />
+            </svg>
+            <span>{isGoogleLoading ? 'Connecting to Google...' : 'Sign In with Google'}</span>
+          </button>
 
         </div>
       </div>
@@ -283,7 +332,7 @@ export const AuthProfilePage: React.FC<AuthProfilePageProps> = ({
                   {currentUser.displayName || 'VIP Patron'}
                 </h1>
                 <span className="px-2 py-0.5 rounded bg-[#3B0764] text-[10px] font-semibold uppercase tracking-wider text-[#D4AF37] border border-[#D4AF37]/40">
-                  {currentUser.role === 'admin' ? 'Maison Admin' : 'Patron'}
+                  {currentUser.email?.toLowerCase().trim() === 'nayarishjewelry@gmail.com' ? 'Administrator' : 'Client'}
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">{currentUser.email}</p>

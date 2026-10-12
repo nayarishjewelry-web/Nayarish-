@@ -4,7 +4,7 @@ import {
   Edit3, ArrowLeft, RefreshCw, X, Sparkles, DollarSign, Banknote, CheckCircle2,
   Upload, RotateCcw, Eye, Smartphone, Monitor, Check
 } from 'lucide-react';
-import { Product, Order, PageView, BrandSettings, CategoryItem } from '../types';
+import { Product, Order, PageView, BrandSettings, CategoryItem, UserProfile } from '../types';
 import { NayarishStore } from '../services/store';
 import { jewelryImages } from '../assets/images';
 import { formatINR } from '../utils/currency';
@@ -16,6 +16,7 @@ interface AdminPageProps {
   orders: Order[];
   brandSettings: BrandSettings;
   setCurrentPage: (page: PageView) => void;
+  currentUser?: UserProfile | null;
 }
 
 export const AdminPage: React.FC<AdminPageProps> = ({
@@ -24,8 +25,55 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   orders,
   brandSettings,
   setCurrentPage,
+  currentUser,
 }) => {
   const { showToast } = useToast();
+
+  const isAuthorized = (currentUser?.email?.toLowerCase().trim() === 'nayarishjewelry@gmail.com') ||
+    (NayarishStore.getCurrentUser()?.email?.toLowerCase().trim() === 'nayarishjewelry@gmail.com');
+
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen bg-[#0F172A] py-20 px-6 flex items-center justify-center">
+        <div className="max-w-md w-full bg-[#141E33] border border-red-500/30 rounded-2xl p-8 text-center shadow-2xl">
+          <div className="w-16 h-16 rounded-full bg-red-950/60 border border-red-500/40 flex items-center justify-center mx-auto mb-4 text-red-400">
+            <ShieldCheck className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-display font-medium text-slate-100 mb-2">
+            Administrative Access Restricted
+          </h2>
+          <p className="text-xs text-slate-400 mb-6 leading-relaxed">
+            Administrative privileges are strictly restricted to{' '}
+            <span className="text-[#D4AF37] font-semibold">nayarishjewelry@gmail.com</span>.
+            {currentUser?.email ? (
+              <span className="block mt-2 text-slate-400">
+                You are currently signed in as <span className="text-slate-200">{currentUser.email}</span>.
+              </span>
+            ) : (
+              <span className="block mt-2 text-slate-400">
+                You are not currently signed in.
+              </span>
+            )}
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={() => setCurrentPage('auth')}
+              className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-[#D4AF37] to-[#F59E0B] text-slate-950 text-xs font-bold uppercase tracking-wider hover:brightness-110 cursor-pointer"
+            >
+              Sign In as Admin
+            </button>
+            <button
+              onClick={() => setCurrentPage('home')}
+              className="px-5 py-2.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 text-xs font-semibold uppercase tracking-wider cursor-pointer"
+            >
+              Return to Storefront
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const [activeTab, setActiveTab] = useState<'products' | 'categories' | 'branding' | 'analytics'>('products');
 
   // Product Add / Edit Modal State

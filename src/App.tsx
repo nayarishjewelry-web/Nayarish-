@@ -182,6 +182,7 @@ function AppContent() {
             orders={orders}
             brandSettings={brandSettings}
             setCurrentPage={handlePageChange}
+            currentUser={currentUser}
           />
         )}
       </main>

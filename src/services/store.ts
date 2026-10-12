@@ -1,9 +1,10 @@
 import { Product, Order, UserProfile, CartItem, BrandSettings, CategoryItem } from '../types';
 import { jewelryImages } from '../assets/images';
-import { auth, db } from './firebase';
+import { auth, db, googleProvider } from './firebase';
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
+  signInWithPopup,
   signOut as fbSignOut 
 } from 'firebase/auth';
 import { 
@@ -313,6 +314,8 @@ const INITIAL_USER: UserProfile = {
   createdAt: '2026-01-10T00:00:00.000Z'
 };
 
+export const ADMIN_EMAIL = 'nayarishjewelry@gmail.com';
+
 // Local storage keys for state persistence
 const STORAGE_KEYS = {
   PRODUCTS: 'nayarish_products_inr_v2',
@@ -602,42 +605,61 @@ export class NayarishStore {
   }
 
   // Auth & Profile Management
+  static isAdmin(user?: UserProfile | null): boolean {
+    if (!user || !user.email) return false;
+    return user.email.toLowerCase().trim() === ADMIN_EMAIL.toLowerCase().trim();
+  }
+
   static getCurrentUser(): UserProfile | null {
-    return loadFromStorage<UserProfile | null>(STORAGE_KEYS.USER, INITIAL_USER);
+    const user = loadFromStorage<UserProfile | null>(STORAGE_KEYS.USER, null);
+    if (user) {
+      // Strictly enforce that only nayarishjewelry@gmail.com gets admin privileges
+      user.role = this.isAdmin(user) ? 'admin' : 'customer';
+    }
+    return user;
   }
 
   static setCurrentUser(user: UserProfile | null): void {
+    if (user) {
+      // Strictly enforce role by email
+      user.role = this.isAdmin(user) ? 'admin' : 'customer';
+    }
     saveToStorage(STORAGE_KEYS.USER, user);
     storeEvents.notify('user', user);
   }
 
   static async signInWithEmail(email: string, password = ''): Promise<UserProfile> {
+    const cleanEmail = email.trim();
     const existing = this.getCurrentUser();
-    let uid = existing && existing.email === email ? existing.uid : `usr-${Date.now().toString(36)}`;
+    let uid = existing && existing.email.toLowerCase() === cleanEmail.toLowerCase() 
+      ? existing.uid 
+      : `usr-${Date.now().toString(36)}`;
     
     if (password && auth) {
       try {
-        const cred = await signInWithEmailAndPassword(auth, email, password);
+        const cred = await signInWithEmailAndPassword(auth, cleanEmail, password);
         uid = cred.user.uid;
       } catch (err) {
         console.warn('Firebase Auth sign-in fallback to local storage session:', err);
       }
     }
 
+    const isSystemAdmin = cleanEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+
     const user: UserProfile = {
       uid,
-      email,
-      displayName: email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+      email: cleanEmail,
+      displayName: cleanEmail.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
       phone: existing?.phone || '+91 98200 44912',
       address: existing?.address || {
-        fullName: email.split('@')[0],
+        fullName: cleanEmail.split('@')[0],
         street: '42 Altamount Road, Penthouse',
         city: 'Mumbai',
         state: 'Maharashtra',
         zip: '400026',
         country: 'India'
       },
-      role: email.toLowerCase() === 'nayarishjewelry@gmail.com' ? 'admin' : 'customer',
+      role: isSystemAdmin ? 'admin' : 'customer',
       createdAt: new Date().toISOString()
     };
     this.setCurrentUser(user);
@@ -645,31 +667,68 @@ export class NayarishStore {
   }
 
   static async signUpWithEmail(email: string, password = '', name?: string): Promise<UserProfile> {
+    const cleanEmail = email.trim();
     let uid = `usr-${Date.now().toString(36)}`;
     if (password && auth) {
       try {
-        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        const cred = await createUserWithEmailAndPassword(auth, cleanEmail, password);
         uid = cred.user.uid;
       } catch (err) {
         console.warn('Firebase Auth sign-up fallback to local storage session:', err);
       }
     }
 
+    const isSystemAdmin = cleanEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+
     const user: UserProfile = {
       uid,
-      email,
-      displayName: name || email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+      email: cleanEmail,
+      displayName: name || cleanEmail.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
       phone: '+91 98200 44912',
       address: {
-        fullName: name || email.split('@')[0],
+        fullName: name || cleanEmail.split('@')[0],
         street: '42 Altamount Road, Penthouse',
         city: 'Mumbai',
         state: 'Maharashtra',
         zip: '400026',
         country: 'India'
       },
-      role: email.toLowerCase() === 'nayarishjewelry@gmail.com' ? 'admin' : 'customer',
+      role: isSystemAdmin ? 'admin' : 'customer',
       createdAt: new Date().toISOString()
+    };
+    this.setCurrentUser(user);
+    return user;
+  }
+
+  static async signInWithGoogle(): Promise<UserProfile> {
+    if (!auth) {
+      throw new Error('Firebase Authentication is not available.');
+    }
+
+    // Google Auth provider setup with prompt: 'select_account'
+    googleProvider.setCustomParameters({ prompt: 'select_account' });
+
+    const result = await signInWithPopup(auth, googleProvider);
+    const fbUser = result.user;
+    const cleanEmail = (fbUser.email || '').trim();
+    const isSystemAdmin = cleanEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+    const existing = this.getCurrentUser();
+
+    const user: UserProfile = {
+      uid: fbUser.uid,
+      email: cleanEmail,
+      displayName: fbUser.displayName || cleanEmail.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+      phone: fbUser.phoneNumber || existing?.phone || '+91 98200 44912',
+      address: existing?.address || {
+        fullName: fbUser.displayName || cleanEmail.split('@')[0],
+        street: '42 Altamount Road, Penthouse',
+        city: 'Mumbai',
+        state: 'Maharashtra',
+        zip: '400026',
+        country: 'India'
+      },
+      role: isSystemAdmin ? 'admin' : 'customer',
+      createdAt: existing?.createdAt || new Date().toISOString()
     };
     this.setCurrentUser(user);
     return user;
@@ -690,6 +749,8 @@ export class NayarishStore {
     const current = this.getCurrentUser();
     if (!current) return null;
     const updated = { ...current, ...updates };
+    // Strictly preserve role based on ADMIN_EMAIL
+    updated.role = this.isAdmin(updated) ? 'admin' : 'customer';
     this.setCurrentUser(updated);
     return updated;
   }
