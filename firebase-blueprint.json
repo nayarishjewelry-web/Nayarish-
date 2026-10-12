@@ -1,0 +1,78 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "A luxury jewelry masterpiece in the catalog",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 200 },
+        "price": { "type": "number" },
+        "category": { "type": "string", "maxLength": 50 },
+        "imageUrl": { "type": "string", "maxLength": 1000 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "stockStatus": { "type": "string", "maxLength": 50 },
+        "stock": { "type": "number" },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["title", "price", "category", "stockStatus"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Jewelry collection category taxonomy",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 500 }
+      },
+      "required": ["name"]
+    },
+    "BrandSettings": {
+      "title": "BrandSettings",
+      "description": "Maison Nayarish header logo and branding configuration",
+      "type": "object",
+      "properties": {
+        "logoMode": { "type": "string", "enum": ["text", "image", "both"] },
+        "brandName": { "type": "string", "maxLength": 100 },
+        "tagline": { "type": "string", "maxLength": 150 },
+        "logoImageUrl": { "type": "string", "maxLength": 2000000 },
+        "logoHeight": { "type": "number" }
+      },
+      "required": ["logoMode", "brandName"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Customer purchase order for high jewelry items",
+      "type": "object",
+      "properties": {
+        "customerName": { "type": "string", "maxLength": 150 },
+        "email": { "type": "string", "maxLength": 150 },
+        "total": { "type": "number" },
+        "subtotal": { "type": "number" },
+        "discount": { "type": "number" },
+        "orderStatus": { "type": "string", "maxLength": 50 },
+        "paymentStatus": { "type": "string", "maxLength": 50 },
+        "trackingNumber": { "type": "string", "maxLength": 100 },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["customerName", "email", "total", "orderStatus"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Catalog of luxury jewels readable by patrons, manageable by admins"
+    },
+    "/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Catalog categories manageable by admins"
+    },
+    "/settings/{settingId}": {
+      "schema": "BrandSettings",
+      "description": "Maison branding and logo settings readable by all, manageable by admins"
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Purchase orders placed by patrons, managed by salon admins"
+    }
+  }
+}

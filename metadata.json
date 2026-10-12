@@ -1,0 +1,6 @@
+{
+  "name": "Nayarish Haute Joaillerie",
+  "description": "High-end luxury jewelry maison specializing in handcrafted royal gold, rare diamonds, and bespoke heirloom pieces.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
